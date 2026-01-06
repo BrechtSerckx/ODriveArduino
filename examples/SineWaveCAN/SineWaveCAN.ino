@@ -21,11 +21,12 @@
 // #define IS_ARDUINO_BUILTIN // Arduino boards with built-in CAN interface (e.g. Arduino Uno R4 Minima)
 // #define IS_MCP2515 // Any board with external MCP2515 based extension module. See below to configure the module.
 // #define IS_STM32_BUILTIN // STM32 boards with built-in CAN interface (e.g. STM32F4 Discovery).
+// #define IS_ESP32_TWAI // ESP32 boards with built-in TWAI (CAN) interface. Directly uses the ESP-IDF TWAI driver.
 
 
 /* Board-specific includes ---------------------------------------------------*/
 
-#if defined(IS_TEENSY_BUILTIN) + defined(IS_ARDUINO_BUILTIN) + defined(IS_MCP2515) + defined(IS_STM32_BUILTIN) != 1
+#if defined(IS_TEENSY_BUILTIN) + defined(IS_ARDUINO_BUILTIN) + defined(IS_MCP2515) + defined(IS_STM32_BUILTIN) + defined(IS_ESP32_TWAI) != 1
 #warning "Select exactly one hardware option at the top of this file."
 
 #if CAN_HOWMANY > 0 || CANFD_HOWMANY > 0
@@ -64,6 +65,12 @@ struct ODriveStatus; // hack to prevent teensy compile error
 #include <STM32_CAN.h>
 #include "ODriveSTM32CAN.hpp"
 #endif // IS_STM32_BUILTIN
+
+#ifdef IS_ESP32_TWAI
+// See https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/twai.html
+#include "driver/twai.h"
+#include "ODriveESP32TWAI.hpp"
+#endif // IS_ESP32_TWAI
 
 
 
@@ -158,6 +165,54 @@ bool setupCan() {
 }
 
 #endif // IS_STM32_BUILTIN
+
+
+/* ESP32 boards with built-in TWAI (CAN) */
+
+#ifdef IS_ESP32_TWAI
+
+// Pins used to connect to CAN bus transceiver
+#define ESP32_TWAI_TX_PIN 5
+#define ESP32_TWAI_RX_PIN 4
+
+ESP32TWAIIntf can_intf;
+
+bool setupCan() {
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(
+        (gpio_num_t)ESP32_TWAI_TX_PIN,
+        (gpio_num_t)ESP32_TWAI_RX_PIN,
+        TWAI_MODE_NORMAL
+    );
+
+    twai_timing_config_t t_config;
+    switch (CAN_BAUDRATE) {
+        case 1000000: t_config = TWAI_TIMING_CONFIG_1MBITS(); break;
+        case 800000:  t_config = TWAI_TIMING_CONFIG_800KBITS(); break;
+        case 500000:  t_config = TWAI_TIMING_CONFIG_500KBITS(); break;
+        case 250000:  t_config = TWAI_TIMING_CONFIG_250KBITS(); break;
+        case 125000:  t_config = TWAI_TIMING_CONFIG_125KBITS(); break;
+        case 100000:  t_config = TWAI_TIMING_CONFIG_100KBITS(); break;
+        case 50000:   t_config = TWAI_TIMING_CONFIG_50KBITS(); break;
+        case 25000:   t_config = TWAI_TIMING_CONFIG_25KBITS(); break;
+        default:      t_config = TWAI_TIMING_CONFIG_250KBITS(); break;
+    }
+
+    twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+
+    if (twai_driver_install(&g_config, &t_config, &f_config) != ESP_OK) {
+        return false;
+    }
+
+    if (twai_start() != ESP_OK) {
+        twai_driver_uninstall();
+        return false;
+    }
+
+    can_intf.initialized = true;
+    return true;
+}
+
+#endif // IS_ESP32_TWAI
 
 
 /* Example sketch ------------------------------------------------------------*/
