@@ -8,9 +8,7 @@
 
 // Simple struct to hold TWAI interface state. Unlike other platforms, ESP32's
 // TWAI driver uses global functions rather than a class instance.
-struct ESP32TWAIIntf {
-    bool initialized = false;
-};
+struct ESP32TWAIIntf {};
 
 struct CanMsg {
     uint32_t id;
@@ -22,14 +20,11 @@ struct CanMsg {
 void onCanMessage(const CanMsg& msg);
 
 static bool sendMsg(ESP32TWAIIntf& intf, uint32_t id, uint8_t length, const uint8_t* data) {
-    if (!intf.initialized) {
-        return false;
-    }
-
+    (void)intf;
     twai_message_t tx_msg = {};
     tx_msg.identifier = id;
     tx_msg.data_length_code = length;
-    tx_msg.extd = (id > 0x7FF) ? 1 : 0;
+    tx_msg.extd = (id & 0x80000000) ? 1 : 0;
     tx_msg.rtr = (data == nullptr) ? 1 : 0;
 
     if (data) {
@@ -38,7 +33,7 @@ static bool sendMsg(ESP32TWAIIntf& intf, uint32_t id, uint8_t length, const uint
         }
     }
 
-    return twai_transmit(&tx_msg, pdMS_TO_TICKS(100)) == ESP_OK;
+    return twai_transmit(&tx_msg, 0) == ESP_OK;
 }
 
 static void onReceive(const CanMsg& msg, ODriveCAN& odrive) {
@@ -46,10 +41,7 @@ static void onReceive(const CanMsg& msg, ODriveCAN& odrive) {
 }
 
 static void pumpEvents(ESP32TWAIIntf& intf, int max_events = 100) {
-    if (!intf.initialized) {
-        return;
-    }
-
+    (void)intf;
     // max_events prevents an infinite loop if messages come at a high rate
     twai_message_t rx_msg;
     while (twai_receive(&rx_msg, 0) == ESP_OK && max_events--) {

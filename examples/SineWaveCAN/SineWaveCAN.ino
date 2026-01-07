@@ -208,7 +208,6 @@ bool setupCan() {
         return false;
     }
 
-    can_intf.initialized = true;
     return true;
 }
 
