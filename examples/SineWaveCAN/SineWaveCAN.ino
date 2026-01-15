@@ -172,8 +172,8 @@ bool setupCan() {
 #ifdef IS_ESP32_TWAI
 
 // Pins used to connect to CAN bus transceiver
-#define ESP32_TWAI_TX_PIN 5
-#define ESP32_TWAI_RX_PIN 4
+#define ESP32_TWAI_TX_PIN 26
+#define ESP32_TWAI_RX_PIN 25
 
 ESP32TWAIIntf can_intf;
 
