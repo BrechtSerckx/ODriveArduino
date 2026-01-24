@@ -1,3 +1,6 @@
+# [0.10.9]
+- Add support for ESP32 TWAI
+
 # [0.10.8]
 - Removed delay while waiting for heartbeat message, causing infinite/nondeterministic delays on some Teensy-based systems with multiple ODrives.
 
